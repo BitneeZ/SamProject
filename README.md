@@ -54,23 +54,3 @@ python test.py
 
 ---
 
-## 📁 Структура проекта
-
-SamProject/
-├── test.py              # Точка входа: голос + аватар + AI
-├── main.py              # Базовый режим без аватара
-├── speech_to_text.py    # Модуль распознавания речи (Vosk)
-├── nlp_dlm.py           # Генерация ответов через LLM API
-├── tts.py               # Текст в речь (озвучка)
-├── calibrovka.py        # Калибровка микрофона / настройки
-├── vtstudio.py          # Интеграция с внешними сервисами (опционально)
-├── gifs/                # Анимации аватара
-│   ├── speak.gif
-│   └── not_speak.gif
-├── models/              # Модели Vosk
-│   └── vosk-model-small-ru-0.22/
-├── .gitignore
-└── README.md
-
----
-
