@@ -1,10 +1,11 @@
+# main.py — Голосовой ассистент с 2D-аватаром и Qwen
 import pygame
 import threading
 from PIL import Image
 
-from speech_to_text import LiveSpeechRecognizer 
-from nlp_dlm import generate_text, get_access_token
-from tts import speak, stop_queue
+from speech_to_text import LiveSpeechRecognizer
+from nlp_dlm import generate_text
+from tts import speak, stop_tts, warmup_tts  # ✅ Обновлённый импорт
 
 # ================= CONFIG =================
 WIDTH, HEIGHT = 1000, 1000
@@ -12,14 +13,14 @@ FPS = 60
 # =========================================
 
 # -------- GLOBAL STATE --------
-speaking = False
+speaking = False  # Флаг состояния аватара (говорит / молчит)
 
 # -------- GIF LOADER --------
 def load_gif(path):
+    """Загружает GIF и возвращает списки кадров и длительностей."""
     gif = Image.open(path)
     frames = []
     durations = []
-
     try:
         while True:
             frame = gif.convert("RGBA")
@@ -31,25 +32,27 @@ def load_gif(path):
             gif.seek(gif.tell() + 1)
     except EOFError:
         pass
-
     return frames, durations
 
 # -------- SPEAK THREAD --------
 def speak_thread(text):
+    """Поток озвучки: управляет флагом анимации и вызывает TTS."""
     global speaking
     speaking = True
     try:
         speak(text)
     finally:
-        speaking = False
+        speaking = False  # Сбрасывается даже при прерывании стопом
 
 # -------- AVATAR WINDOW --------
 def avatar_loop():
+    """Основной цикл отрисовки Pygame с переключением GIF."""
     pygame.init()
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
     pygame.display.set_caption("2D Avatar")
     clock = pygame.time.Clock()
 
+    # Загрузка анимаций (проверь пути!)
     idle_frames, idle_dur = load_gif("gifs/not_speak.gif")
     talk_frames, talk_dur = load_gif("gifs/speak.gif")
 
@@ -65,7 +68,7 @@ def avatar_loop():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-                stop_queue()
+                stop_tts()  # ✅ Мгновенная остановка звука и очереди
                 break
 
         # ---- STATE SWITCH ----
@@ -82,6 +85,7 @@ def avatar_loop():
                 frame_idx = 0
                 frame_time = 0
 
+        # Анимация кадров
         frame_time += dt * 1000
         if frame_time >= durations[frame_idx]:
             frame_time = 0
@@ -95,26 +99,26 @@ def avatar_loop():
 
 # -------- MAIN --------
 def main():
-    recognizer = LiveSpeechRecognizer(
-        model_path="models/vosk-model-small-ru-0.22"
-    )
+    # Прогреваем соединение с edge-tts при старте (убирает лаг на первом ответе)
+    warmup_tts()
 
-    avatar_thread = threading.Thread(
-        target=avatar_loop, daemon=True
-    )
+    # Инициализация распознавания речи
+    recognizer = LiveSpeechRecognizer(model_path="models/vosk-model-ru-0.42")
+
+    # Запуск окна аватара в отдельном потоке
+    avatar_thread = threading.Thread(target=avatar_loop, daemon=True)
     avatar_thread.start()
 
+    # Основной цикл: слушаем → генерируем → озвучиваем
     for sentence in recognizer.listen():
         print("Вы:", sentence)
 
-        gen = generate_text(sentence, get_access_token())
+        # Генерация ответа через Qwen
+        gen = generate_text(sentence, access_token=None)
         print("Бот:", gen)
 
-        threading.Thread(
-            target=speak_thread,
-            args=(gen,),
-            daemon=True
-        ).start()
+        # Озвучка в фоне (не блокирует распознавание)
+        threading.Thread(target=speak_thread, args=(gen,), daemon=True).start()
 
 # -------- ENTRY --------
 if __name__ == "__main__":
