@@ -27,6 +27,7 @@
 ```bash
 git clone https://github.com/BitneeZ/SamProject.git
 cd SamProject
+```
 
 ### 2. Установка зависимостей
 
@@ -40,10 +41,11 @@ pip install vosk pygame pillow requests
 - Скачайте модель Vosk для русского языка:
   https://alphacephei.com/vosk/models
   Распакуйте в папку models/:
-  
+```text
   SamProject/
   └── models/
       └── vosk-model-ru-0.42//
+```
 
 - Убедитесь, что в папке gifs/ есть анимации:
   - speak.gif — аватар говорит
